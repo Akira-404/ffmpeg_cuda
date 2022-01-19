@@ -1,4 +1,4 @@
 #!/bin/bash
 
-g++ main.cpp -o main -I/usr/local/include/ffmpeg/ -lavcodec -lavformat -lavutil -L/opt/ffmpeg/build/lib
+g++ main.cpp -o main -I/opt/ffmpeg/build/include/ -lavcodec -lavformat -lavutil -L/opt/ffmpeg/build/lib
 

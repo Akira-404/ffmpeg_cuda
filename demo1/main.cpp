@@ -5,8 +5,8 @@
 extern "C"
 {
 #endif
-#include "libavformat/avformat.h"
 #include "libavcodec/avcodec.h"
+#include "libavformat/avformat.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/time.h"
 #ifdef __cplusplus
