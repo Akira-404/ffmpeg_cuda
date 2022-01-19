@@ -2,18 +2,19 @@
 extern "C"
 {
 #include "libavformat/avformat.h"
-#include <libavutil/mathematics.h>
-#include <libavutil/time.h>
-#include <libavutil/samplefmt.h>
-#include <libavcodec/avcodec.h>
+#include "libavutil/mathematics.h"
+#include "libavutil/time.h"
+#include "libavutil/samplefmt.h"
+#include "libavcodec/avcodec.h"
+#include "libavcodec/bsf.h"
 };
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 
 void AVFrame2Img(AVFrame *pFrame, cv::Mat &img);
 void Yuv420p2Rgb32(const uchar *yuvBuffer_in, const uchar *rgbBuffer_out, int width, int height);
-using namespace std;
-using namespace cv;
+// using namespace std;
+
 int main(int argc, char *argv[])
 {
     AVFormatContext *ifmt_ctx = NULL;
@@ -23,12 +24,12 @@ int main(int argc, char *argv[])
     int videoindex = -1;
 
     AVCodecContext *pCodecCtx;
-    AVCodec *pCodec;
+    const AVCodec *pCodec;
 
     const char *in_filename = "rtmp://58.200.131.2:1935/livetv/hunantv"; //芒果台rtmp地址
     const char *out_filename_v = "test.h264";                            // Output file URL
     // Register
-    av_register_all();
+    // av_register_all();
     // Network
     avformat_network_init();
     // Input
@@ -46,7 +47,8 @@ int main(int argc, char *argv[])
     videoindex = -1;
     for (i = 0; i < ifmt_ctx->nb_streams; i++)
     {
-        if (ifmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+        // if (ifmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+        if (ifmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
         {
             videoindex = i;
         }
@@ -83,15 +85,19 @@ int main(int argc, char *argv[])
 
     cv::Mat image_test;
 
-    AVBitStreamFilterContext *h264bsfc = av_bitstream_filter_init("h264_mp4toannexb");
+    AVBSFContext *bsf_ctx = nullptr;
+    // AVBitStreamFilterContext *h264bsfc = av_bitstream_filter_init("h264_mp4toannexb");
+    const AVBitStreamFilter *h264bsfc = av_bsf_get_by_name("h264_mp4toannexb");
+    av_bsf_alloc(h264bsfc, &bsf_ctx);
 
     while (av_read_frame(ifmt_ctx, &pkt) >= 0)
     {
         if (pkt.stream_index == videoindex)
         {
+            av_bsf_send_packet(bsf_ctx, &pkt);
+            av_bsf_receive_packet(bsf_ctx, &pkt);
 
-            av_bitstream_filter_filter(h264bsfc, ifmt_ctx->streams[videoindex]->codec, NULL, &pkt.data, &pkt.size,
-                                       pkt.data, pkt.size, 0);
+            // av_bitstream_filter_filter(h264bsfc, ifmt_ctx->streams[videoindex]->codec, NULL, &pkt.data, &pkt.size,pkt.data, pkt.size, 0);
 
             printf("Write Video Packet. size:%d\tpts:%lld\n", pkt.size, pkt.pts);
 
@@ -121,9 +127,11 @@ int main(int argc, char *argv[])
         // Free AvPacket
         av_packet_unref(&pkt);
     }
+
     // Close filter
-    av_bitstream_filter_close(h264bsfc);
-    fclose(fp_video);
+    av_bsf_free(&bsf_ctx);
+    // av_bitstream_filter_close(h264bsfc);
+    std::fclose(fp_video);
     avformat_close_input(&ifmt_ctx);
     if (ret < 0 && ret != AVERROR_EOF)
     {
@@ -177,7 +185,7 @@ void AVFrame2Img(AVFrame *pFrame, cv::Mat &img)
     int channels = 3;
     //输出图像分配内存
     img = cv::Mat::zeros(frameHeight, frameWidth, CV_8UC3);
-    Mat output = cv::Mat::zeros(frameHeight, frameWidth, CV_8U);
+    cv::Mat output = cv::Mat::zeros(frameHeight, frameWidth, CV_8U);
 
     //创建保存yuv数据的buffer
     uchar *pDecodedBuffer = (uchar *)malloc(frameHeight * frameWidth * sizeof(uchar) * channels);
@@ -210,16 +218,16 @@ void AVFrame2Img(AVFrame *pFrame, cv::Mat &img)
     Yuv420p2Rgb32(pDecodedBuffer, img.data, frameWidth, frameHeight);
 
     //简单处理，这里用了canny来进行二值化
-    cvtColor(img, output, CV_RGB2GRAY);
-    waitKey(2);
+    cv::cvtColor(img, output, cv::COLOR_BGR2GRAY);
+    cv::waitKey(2);
     Canny(img, output, 50, 50 * 2);
-    waitKey(2);
-    imshow("test", output);
-    waitKey(10);
+    cv::waitKey(2);
+    cv::imshow("test", output);
+    cv::waitKey(10);
     // 测试函数
     // imwrite("test.jpg",img);
     //释放buffer
-    free(pDecodedBuffer);
+    std::free(pDecodedBuffer);
     img.release();
     output.release();
 }
