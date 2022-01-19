@@ -16,6 +16,11 @@ extern "C"
 using namespace std;
 int main(int argc, char *argv[])
 {
+    for (int i = 0; i < argc; i++)
+    {
+        cout << "argument[" << i << "]:" << argv[i] << endl;
+    }
+
     const AVOutputFormat *ofmt = NULL;
     // Input AVFormatContext and Output AVFormatContext
     AVFormatContext *ifmt_ctx = NULL, *ofmt_ctx = NULL;
@@ -26,16 +31,20 @@ int main(int argc, char *argv[])
     int videoindex = -1;
     int frame_index = 0;
     // in_filename  = "rtmp://58.200.131.2:1935/livetv/hunantv";
-    in_filename = "http://img.ksbbs.com/asset/Mon_1704/15868902d399b87.flv";
+    if (argv[1] == NULL)
+        in_filename = "http://img.ksbbs.com/asset/Mon_1704/15868902d399b87.flv";
+    else
+        in_filename = argv[1];
 
+    cout<<"in_filename:"<<in_filename<<endl;
     out_filename = "receive.flv";
     // av_register_all();
     // Network
     avformat_network_init();
     /*avformat_open_input params:
-        AVFormatContext **ps, 
+        AVFormatContext **ps,
         const char *filename,
-        AVInputFormat *fmt, 
+        AVInputFormat *fmt,
         AVDictionary **options
     */
     if ((ret = avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0)
@@ -49,7 +58,7 @@ int main(int argc, char *argv[])
         goto end;
     }
     //？ ctx=context
-    //nb_streams：输入视频的AVStream个数
+    // nb_streams：输入视频的AVStream个数
     //找到第一个为视频流的位置
     for (i = 0; i < ifmt_ctx->nb_streams; i++)
     {
@@ -60,7 +69,7 @@ int main(int argc, char *argv[])
         }
     }
     // av_dump_format,  打印关于输入或输出格式的详细信息, is_output 选择指定的上下文是输入(0)还是输出(1)
-    printf("this is stream infomation of informat context ...\n"); 
+    printf("this is stream infomation of informat context ...\n");
     av_dump_format(ifmt_ctx, 0, in_filename, 0);
 
     // Output
@@ -87,7 +96,7 @@ int main(int argc, char *argv[])
             ret = AVERROR_UNKNOWN;
             goto end;
         }
-        
+
         AVCodecContext *p_codec_ctx = avcodec_alloc_context3(codec);
         ret = avcodec_parameters_to_context(p_codec_ctx, in_stream->codecpar);
 
@@ -97,9 +106,9 @@ int main(int argc, char *argv[])
             printf("Failed to copy context from input to output stream codec context\n");
             goto end;
         }
-        
+
         p_codec_ctx->codec_tag = 0;
-        
+
         if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
             p_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
@@ -110,7 +119,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    printf("this is stream infomation of outformat context ...\n"); 
+    printf("this is stream infomation of outformat context ...\n");
     // Dump Format------------------
     av_dump_format(ofmt_ctx, 0, out_filename, 1);
     // Open output URL
