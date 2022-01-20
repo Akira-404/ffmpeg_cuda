@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
         ret = AVERROR_UNKNOWN;
         goto end;
     }
+
     ofmt = ofmt_ctx->oformat;
     for (i = 0; i < ifmt_ctx->nb_streams; i++)
     {
@@ -97,7 +98,9 @@ int main(int argc, char *argv[])
             goto end;
         }
 
+        // 申请AVCodecContext空间。需要传递一个编码器，也可以不传，但不会包含编码器。
         AVCodecContext *p_codec_ctx = avcodec_alloc_context3(codec);
+        //avcodec_parameters_to_context: 该函数用于将流里面的参数，也就是AVStream里面的参数直接复制到AVCodecContext的上下文当中。
         ret = avcodec_parameters_to_context(p_codec_ctx, in_stream->codecpar);
 
         // Copy the settings of AVCodecContext
@@ -108,7 +111,8 @@ int main(int argc, char *argv[])
         }
 
         p_codec_ctx->codec_tag = 0;
-
+        
+        // 初始化文件头信息
         if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
             p_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
@@ -133,12 +137,17 @@ int main(int argc, char *argv[])
         }
     }
     // Write file header
+    //params:
+    // s：用于输出的AVFormatContext。
+    // options：额外的选项，目前没有深入研究过，一般为NULL。
+    // 函数正常执行后返回值等于0。
     ret = avformat_write_header(ofmt_ctx, NULL);
     if (ret < 0)
     {
         printf("Error occurred when opening output URL\n");
         goto end;
     }
+
     //拉流
     while (1)
     {
@@ -159,9 +168,12 @@ int main(int argc, char *argv[])
         // Print to Screen
         if (pkt.stream_index == videoindex)
         {
+
             printf("Receive %8d video frames from input URL\n", frame_index);
             frame_index++;
         }
+
+        // 写packet
         ret = av_interleaved_write_frame(ofmt_ctx, &pkt);
         if (ret < 0)
         {
