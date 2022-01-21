@@ -16,29 +16,39 @@ void Yuv420p2Rgb32(const uchar *yuvBuffer_in, const uchar *rgbBuffer_out, int wi
 
 int main(int argc, char *argv[])
 {
+    // AVFormatContext: 封装的上下文
+    // AVStream : 存放的是音频流或视频流的参数信息
+    // AVPacket: 针对于具体的解封装完后的一个一个的数据包
+   
     for (int i = 0; i < argc; i++)
-    {
         std::cout << "argument[" << i << "]:" << argv[i] << std::endl;
-    }
+    
     AVFormatContext *ifmt_ctx = NULL;
     AVPacket pkt;
-    AVFrame *pframe = NULL;
+    AVFrame *pFrame = NULL;
     int ret, i;
-    int videoindex = -1;
+    int videoIndex = -1;
 
     AVCodecContext *pCodecCtx;
-    const AVCodec *pCodec;
+    const AVCodec *pCodecParams;
     const char *in_filename = NULL;
+    const char *out_filename_v = NULL;
+    
     if (argv[1] == NULL)
         in_filename = "http://img.ksbbs.com/asset/Mon_1704/15868902d399b87.flv";
     else
         in_filename = argv[1];
 
-    const char *out_filename_v = "test.h264"; // Output file URL
+    out_filename_v = "test.h264"; // Output file URL
 
+    printf("in_filename:%s\n",in_filename);
+    printf("out_filename_v:%s\n",out_filename_v);
+    
     // Init Network
     avformat_network_init();
+
     // Input
+    // 用于打开多媒体数据并解析
     if ((ret = avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0)
     {
         printf("Could not open input file.");
@@ -50,46 +60,53 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    videoindex = -1;
+    videoIndex = -1;
+    enum AVCodecID codecId;
+    int nbFrame=0;
     for (i = 0; i < ifmt_ctx->nb_streams; i++)
     {
-        // if (ifmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
         if (ifmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
         {
-            videoindex = i;
+            videoIndex = i;
+            codecId=ifmt_ctx->streams[i]->codecpar->codec_id; 
+            nbFrame=ifmt_ctx->streams[i]->nb_frames;   
         }
     }
+    printf("number of frame in stream:%d\n",nbFrame);
     // Find H.264 Decoder
-    pCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
-    if (pCodec == NULL)
+    // pCodecParams = avcodec_find_decoder(AV_CODEC_ID_H264);
+    pCodecParams = avcodec_find_decoder(codecId);
+    printf("pCodecParams name:%s\n",pCodecParams->long_name);
+    if (pCodecParams == NULL)
     {
         printf("Couldn't find Codec.\n");
         return -1;
     }
-
-    pCodecCtx = avcodec_alloc_context3(pCodec);
+    // printf("pCodecParams:%s",pCodecParams->long_name);
+    //根据编码器信息申请配置编码器    
+    pCodecCtx = avcodec_alloc_context3(pCodecParams);
     if (!pCodecCtx)
     {
         fprintf(stderr, "Could not allocate video codec context\n");
         exit(1);
     }
-
-    if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0)
+    // 打开视频解码器
+    if (avcodec_open2(pCodecCtx, pCodecParams, NULL) < 0)
     {
         printf("Couldn't open codec.\n");
         return -1;
     }
-
-    pframe = av_frame_alloc();
-    if (!pframe)
+    // 申请一个frame空间
+    pFrame = av_frame_alloc();
+    if (!pFrame)
     {
         printf("Could not allocate video frame\n");
         exit(1);
     }
-
+    exit(0); 
     FILE *fp_video = fopen(out_filename_v, "wb+"); //用于保存H.264
 
-    cv::Mat image_test;
+    cv::Mat imageTest;
 
     AVBSFContext *bsf_ctx = nullptr;
     // AVBitStreamFilterContext *h264bsfc = av_bitstream_filter_init("h264_mp4toannexb");
@@ -98,12 +115,12 @@ int main(int argc, char *argv[])
 
     while (av_read_frame(ifmt_ctx, &pkt) >= 0)
     {
-        if (pkt.stream_index == videoindex)
+        if (pkt.stream_index == videoIndex)
         {
             av_bsf_send_packet(bsf_ctx, &pkt);
             av_bsf_receive_packet(bsf_ctx, &pkt);
 
-            // av_bitstream_filter_filter(h264bsfc, ifmt_ctx->streams[videoindex]->codec, NULL, &pkt.data, &pkt.size,pkt.data, pkt.size, 0);
+            // av_bitstream_filter_filter(h264bsfc, ifmt_ctx->streams[videoIndex]->codec, NULL, &pkt.data, &pkt.size,pkt.data, pkt.size, 0);
 
             printf("Write Video Packet. size:%d\tpts:%lld\n", pkt.size, pkt.pts);
 
@@ -120,14 +137,14 @@ int main(int argc, char *argv[])
                     continue;
                 }
                 // Get AVframe
-                ret = avcodec_receive_frame(pCodecCtx, pframe);
+                ret = avcodec_receive_frame(pCodecCtx, pFrame);
                 if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
                 {
                     std::cout << "avcodec_receive_frame: " << ret << std::endl;
                     continue;
                 }
                 // AVframe to rgb
-                AVFrame2Img(pframe, image_test);
+                AVFrame2Img(pFrame, imageTest);
             }
         }
         // Free AvPacket
