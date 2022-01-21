@@ -8,15 +8,18 @@ extern "C"
 #include "libavcodec/avcodec.h"
 #include "libavcodec/bsf.h"
 };
-#include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
 
 void AVFrame2Img(AVFrame *pFrame, cv::Mat &img);
 void Yuv420p2Rgb32(const uchar *yuvBuffer_in, const uchar *rgbBuffer_out, int width, int height);
-// using namespace std;
 
 int main(int argc, char *argv[])
 {
+    for (int i = 0; i < argc; i++)
+    {
+        std::cout << "argument[" << i << "]:" << argv[i] << std::endl;
+    }
     AVFormatContext *ifmt_ctx = NULL;
     AVPacket pkt;
     AVFrame *pframe = NULL;
@@ -25,12 +28,15 @@ int main(int argc, char *argv[])
 
     AVCodecContext *pCodecCtx;
     const AVCodec *pCodec;
+    const char *in_filename = NULL;
+    if (argv[1] == NULL)
+        in_filename = "http://img.ksbbs.com/asset/Mon_1704/15868902d399b87.flv";
+    else
+        in_filename = argv[1];
 
-    const char *in_filename = "rtmp://58.200.131.2:1935/livetv/hunantv"; //芒果台rtmp地址
-    const char *out_filename_v = "test.h264";                            // Output file URL
-    // Register
-    // av_register_all();
-    // Network
+    const char *out_filename_v = "test.h264"; // Output file URL
+
+    // Init Network
     avformat_network_init();
     // Input
     if ((ret = avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0)

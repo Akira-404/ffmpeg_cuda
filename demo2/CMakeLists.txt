@@ -1,0 +1,45 @@
+cmake_minimum_required(VERSION 3.1)
+
+project(demo2)
+
+SET(lib_path "/opt/ffmpeg/build/lib")
+SET(inc_path "/opt/ffmpeg/build/include")
+
+SET(CMAKE_CXX_STANDARD 11)
+SET(CMAKE_CXX_FLAGS "-D__STDC_CONSTANT_MACROS")
+
+find_package(OpenCV REQUIRED)
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+
+MESSAGE(OpenCV_INCLUDE_DIRS:${OpenCV_INCLUDE_DIRS})
+MESSAGE(OpenCV_LIBS:${OpenCV_LIBS})
+
+# MESSAGE(status "config:${OpenCV_DIR}")
+# MESSAGE(status "version:${OpenCV_VERSION}")
+# MESSAGE(status "libraries:${OpenCV_LIBS}")
+# MESSAGE(status "include path:${OpenCV_INCLUDE_DIRS}")
+
+FIND_PATH(AVCODEC_INCLUDE_DIR  libavcodec/avcodec.h ${inc_path} NO_DEFAULT_PATH)
+MESSAGE(AVCODEC_INCLUDE_DIR:${AVCODEC_INCLUDE_DIR})
+FIND_LIBRARY(AVCODEC_LIBRARY avcodec ${lib_path})
+MESSAGE(AVCODEC_LIBRARY:${AVCODEC_LIBRARY})
+
+find_path(AVFORMAT_INCLUDE_DIR  libavformat/avformat.h  ${inc_path} NO_DEFAULT_PATH)
+MESSAGE(AVFORMAT_INCLUDE_DIR:${AVFORMAT_INCLUDE_DIR})
+FIND_LIBRARY(AVFORMAT_LIBRARY avformat ${lib_path})
+MESSAGE(AVFORMAT_LIBRARY:${AVFORMAT_LIBRARY})
+
+find_path(AVUTIL_INCLUDE_DIR libavutil/avutil.h ${inc_path} NO_DEFAULT_PATH)
+MESSAGE(AVUTIL_INCLUDE_DIR:${AVUTIL_INCLUDE_DIR})
+FIND_LIBRARY(AVUTIL_LIBRARY avutil ${lib_path})
+MESSAGE(AVUTIL_LIBRARY:${AVUTIL_LIBRARY})
+
+find_path(AVDEVICE_INCLUDE_DIR  libavdevice/avdevice.h ${inc_path} NO_DEFAULT_PATH)
+MESSAGE(AVDEVICE_INCLUDE_DIR:${AVDEVICE_INCLUDE_DIR})
+FIND_LIBRARY(AVDEVICE_LIBRARY avdevice ${lib_path})
+MESSAGE(AVDEVICE_LIBRARY:${AVDEVICE_LIBRARY})
+
+add_executable(main main.cpp)
+target_include_directories(main PRIVATE ${AVCODEC_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR} ${AVDEVICE_INCLUDE_DIR})
+target_link_libraries(main PRIVATE ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY} ${OpenCV_LIBS})
+
