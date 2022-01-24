@@ -11,7 +11,6 @@ extern "C"
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
 
-
 void AVFrame2Img(AVFrame *pFrame, cv::Mat &img);
 void Yuv420p2Rgb32(const uchar *yuvBuffer_in, const uchar *rgbBuffer_out, int width, int height);
 
@@ -20,31 +19,32 @@ int main(int argc, char *argv[])
     // AVFormatContext: 封装的上下文
     // AVStream : 存放的是音频流或视频流的参数信息
     // AVPacket: 针对于具体的解封装完后的一个一个的数据包
-   
+
     for (int i = 0; i < argc; i++)
         std::cout << "argument[" << i << "]:" << argv[i] << std::endl;
     
-    AVFormatContext *ifmt_ctx = NULL;
-    AVPacket pkt;
-    AVFrame *pFrame = NULL;
-    int ret, i;
-    int videoIndex = -1;
+    const char *in_filename = nullptr;
+    const char *out_filename_v = nullptr;
 
-    AVCodecContext *pCodecCtx;
-    const AVCodec *pCodecParams;
-    const char *in_filename = NULL;
-    const char *out_filename_v = NULL;
-    
     if (argv[1] == NULL)
         in_filename = "http://img.ksbbs.com/asset/Mon_1704/15868902d399b87.flv";
     else
         in_filename = argv[1];
 
     out_filename_v = "test.h264"; // Output file URL
-
-    printf("in_filename:%s\n",in_filename);
-    printf("out_filename_v:%s\n",out_filename_v);
     
+    printf("in_filename:%s\n", in_filename);
+    printf("out_filename_v:%s\n", out_filename_v);
+
+    AVFormatContext *ifmt_ctx = nullptr;
+    AVPacket pkt;
+    AVFrame *pFrame = nullptr;
+    int ret, i;
+    int videoIndex = -1;
+
+    AVCodecContext *pCodecCtx=nullptr;
+    const AVCodec *pCodec=nullptr;
+        
     // Init Network
     avformat_network_init();
 
@@ -55,6 +55,7 @@ int main(int argc, char *argv[])
         printf("Could not open input file.");
         return -1;
     }
+    
     if ((ret = avformat_find_stream_info(ifmt_ctx, 0)) < 0)
     {
         printf("Failed to retrieve input stream information");
@@ -62,49 +63,47 @@ int main(int argc, char *argv[])
     }
 
     videoIndex = -1;
-    enum AVCodecID codecId;
-    int nbFrame=0;
-    AVStream* stream;
+    AVCodecID codecId;
+    AVStream *stream=nullptr;
 
     for (i = 0; i < ifmt_ctx->nb_streams; i++)
     {
         if (ifmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
         {
             videoIndex = i;
-            stream=ifmt_ctx->streams[i];
-            codecId=stream->codecpar->codec_id; 
-            nbFrame=stream->nb_frames;   
+            stream = ifmt_ctx->streams[i];
+            codecId = stream->codecpar->codec_id;
         }
     }
-    printf("number of frame in stream:%d\n",nbFrame);
+    std::cout<<"codecId:"<<codecId<<std::endl;
     // Find H.264 Decoder
-    // pCodecParams = avcodec_find_decoder(AV_CODEC_ID_H264);
+    // pCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
     //查找编码器信息
-    pCodecParams = avcodec_find_decoder(codecId);
-    printf("pCodecParams name:%s\n",pCodecParams->long_name);
-    if (pCodecParams == NULL)
+    pCodec = avcodec_find_decoder(codecId);
+    std::cout<<"pCodec->long_name:"<<pCodec->long_name<<std::endl;
+    if (pCodec == NULL)
     {
         printf("Couldn't find Codec.\n");
         return -1;
     }
-    // printf("pCodecParams:%s",pCodecParams->long_name);
-    //根据编码器信息申请配置编码器上下文空间    
-    pCodecCtx = avcodec_alloc_context3(pCodecParams);
+    //根据编码器申请配置编码器上下文空间
+    pCodecCtx = avcodec_alloc_context3(pCodec);
     if (!pCodecCtx)
     {
         fprintf(stderr, "Could not allocate video codec context\n");
         exit(1);
     }
-    //根据流信息配置编码器上下文参数 
-    ret=avcodec_parameters_to_context(pCodecCtx,stream->codecpar);
-    if(ret<0)
+
+    //根据流信息配置编码器上下文参数
+    ret = avcodec_parameters_to_context(pCodecCtx, stream->codecpar);
+    if (ret < 0)
     {
         printf("Failed to copy context from input to output stream codec context\n");
         return -1;
     }
 
     // 打开视频解码器
-    if (avcodec_open2(pCodecCtx, pCodecParams, NULL) < 0)
+    if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0)
     {
         printf("Couldn't open codec.\n");
         return -1;
@@ -116,10 +115,10 @@ int main(int argc, char *argv[])
         printf("Could not allocate video frame\n");
         exit(1);
     }
-    
+
     FILE *fp_video = fopen(out_filename_v, "wb+"); //用于保存H.264
 
-    cv::Mat imageTest;
+    cv::Mat cvImg;
 
     AVBSFContext *bsf_ctx = nullptr;
     // AVBitStreamFilterContext *h264bsfc = av_bitstream_filter_init("h264_mp4toannexb");
@@ -157,7 +156,10 @@ int main(int argc, char *argv[])
                     continue;
                 }
                 // AVframe to rgb
-                AVFrame2Img(pFrame, imageTest);
+                AVFrame2Img(pFrame, cvImg);
+                cv::imshow("out", cvImg);
+                cv::waitKey(25);
+                cvImg.release();
             }
         }
         // Free AvPacket
@@ -222,7 +224,7 @@ void AVFrame2Img(AVFrame *pFrame, cv::Mat &img)
     int channels = 3;
     //输出图像分配内存
     img = cv::Mat::zeros(frameHeight, frameWidth, CV_8UC3);
-    cv::Mat output = cv::Mat::zeros(frameHeight, frameWidth, CV_8U);
+    // cv::Mat output = cv::Mat::zeros(frameHeight, frameWidth, CV_8U);
 
     //创建保存yuv数据的buffer
     uchar *pDecodedBuffer = (uchar *)malloc(frameHeight * frameWidth * sizeof(uchar) * channels);
@@ -254,17 +256,7 @@ void AVFrame2Img(AVFrame *pFrame, cv::Mat &img)
     //将buffer中的yuv420p数据转换为RGB;
     Yuv420p2Rgb32(pDecodedBuffer, img.data, frameWidth, frameHeight);
 
-    //简单处理，这里用了canny来进行二值化
-    // cv::cvtColor(img, output, cv::COLOR_BGR2GRAY);
-    // cv::waitKey(2);
-    // Canny(img, output, 50, 50 * 2);
-    // cv::waitKey(2);
-    cv::imshow("out", img);
-    cv::waitKey(25);
-    // 测试函数
-    // imwrite("test.jpg",img);
     //释放buffer
     std::free(pDecodedBuffer);
-    img.release();
-    output.release();
+    // output.release();
 }

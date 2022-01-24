@@ -60,6 +60,8 @@ int main(int argc, char *argv[])
     //？ ctx=context
     // nb_streams：输入视频的AVStream个数
     //找到第一个为视频流的位置
+    std::cout<<ifmt_ctx->nb_streams<<std::endl;
+    exit(0);
     for (i = 0; i < ifmt_ctx->nb_streams; i++)
     {
         if (ifmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
