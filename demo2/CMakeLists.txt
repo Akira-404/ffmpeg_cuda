@@ -11,13 +11,11 @@ SET(CMAKE_CXX_FLAGS "-D__STDC_CONSTANT_MACROS")
 find_package(OpenCV REQUIRED)
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
-MESSAGE(OpenCV_INCLUDE_DIRS:${OpenCV_INCLUDE_DIRS})
-MESSAGE(OpenCV_LIBS:${OpenCV_LIBS})
 
-# MESSAGE(status "config:${OpenCV_DIR}")
-# MESSAGE(status "version:${OpenCV_VERSION}")
-# MESSAGE(status "libraries:${OpenCV_LIBS}")
-# MESSAGE(status "include path:${OpenCV_INCLUDE_DIRS}")
+MESSAGE(status "config:${OpenCV_DIR}")
+MESSAGE(status "version:${OpenCV_VERSION}")
+MESSAGE(status "libraries:${OpenCV_LIBS}")
+MESSAGE(status "include path:${OpenCV_INCLUDE_DIRS}")
 
 FIND_PATH(AVCODEC_INCLUDE_DIR  libavcodec/avcodec.h ${inc_path} NO_DEFAULT_PATH)
 MESSAGE(AVCODEC_INCLUDE_DIR:${AVCODEC_INCLUDE_DIR})
@@ -38,6 +36,8 @@ find_path(AVDEVICE_INCLUDE_DIR  libavdevice/avdevice.h ${inc_path} NO_DEFAULT_PA
 MESSAGE(AVDEVICE_INCLUDE_DIR:${AVDEVICE_INCLUDE_DIR})
 FIND_LIBRARY(AVDEVICE_LIBRARY avdevice ${lib_path})
 MESSAGE(AVDEVICE_LIBRARY:${AVDEVICE_LIBRARY})
+
+
 
 add_executable(main main.cpp)
 target_include_directories(main PRIVATE ${AVCODEC_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR} ${AVDEVICE_INCLUDE_DIR})
