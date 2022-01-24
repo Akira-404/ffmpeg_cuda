@@ -63,18 +63,22 @@ int main(int argc, char *argv[])
     videoIndex = -1;
     enum AVCodecID codecId;
     int nbFrame=0;
+    AVStream* stream;
+
     for (i = 0; i < ifmt_ctx->nb_streams; i++)
     {
         if (ifmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
         {
             videoIndex = i;
-            codecId=ifmt_ctx->streams[i]->codecpar->codec_id; 
-            nbFrame=ifmt_ctx->streams[i]->nb_frames;   
+            stream=ifmt_ctx->streams[i];
+            codecId=stream->codecpar->codec_id; 
+            nbFrame=stream->nb_frames;   
         }
     }
     printf("number of frame in stream:%d\n",nbFrame);
     // Find H.264 Decoder
     // pCodecParams = avcodec_find_decoder(AV_CODEC_ID_H264);
+    //查找编码器信息
     pCodecParams = avcodec_find_decoder(codecId);
     printf("pCodecParams name:%s\n",pCodecParams->long_name);
     if (pCodecParams == NULL)
@@ -83,13 +87,21 @@ int main(int argc, char *argv[])
         return -1;
     }
     // printf("pCodecParams:%s",pCodecParams->long_name);
-    //根据编码器信息申请配置编码器    
+    //根据编码器信息申请配置编码器上下文空间    
     pCodecCtx = avcodec_alloc_context3(pCodecParams);
     if (!pCodecCtx)
     {
         fprintf(stderr, "Could not allocate video codec context\n");
         exit(1);
     }
+    //根据流信息配置编码器上下文参数 
+    ret=avcodec_parameters_to_context(pCodecCtx,stream->codecpar);
+    if(ret<0)
+    {
+        printf("Failed to copy context from input to output stream codec context\n");
+        return -1;
+    }
+
     // 打开视频解码器
     if (avcodec_open2(pCodecCtx, pCodecParams, NULL) < 0)
     {
@@ -103,7 +115,7 @@ int main(int argc, char *argv[])
         printf("Could not allocate video frame\n");
         exit(1);
     }
-    exit(0); 
+    
     FILE *fp_video = fopen(out_filename_v, "wb+"); //用于保存H.264
 
     cv::Mat imageTest;
@@ -241,12 +253,12 @@ void AVFrame2Img(AVFrame *pFrame, cv::Mat &img)
     Yuv420p2Rgb32(pDecodedBuffer, img.data, frameWidth, frameHeight);
 
     //简单处理，这里用了canny来进行二值化
-    cv::cvtColor(img, output, cv::COLOR_BGR2GRAY);
-    cv::waitKey(2);
-    Canny(img, output, 50, 50 * 2);
-    cv::waitKey(2);
-    cv::imshow("test", output);
-    cv::waitKey(10);
+    // cv::cvtColor(img, output, cv::COLOR_BGR2GRAY);
+    // cv::waitKey(2);
+    // Canny(img, output, 50, 50 * 2);
+    // cv::waitKey(2);
+    cv::imshow("out", img);
+    cv::waitKey(25);
     // 测试函数
     // imwrite("test.jpg",img);
     //释放buffer
